@@ -9,7 +9,7 @@ AnyKernel=$(pwd)/../AnyKernel3
 # Telegram message
 # echo 'your bot token' > .bot_token
 # echo 'your group or channel chat id' > .chat_id
-if [[ $(cat .bot_token) != "" && $(cat .chat_id) != "" ]]; then
+if [[ -e .bot_token && -e .chat_id ]]; then
     BOT_TOKEN=$(cat .bot_token)
     CHAT_ID=$(cat .chat_id)
     UT=1
@@ -31,22 +31,24 @@ fi
 # Make zip
 MakeZip(){
     if [ ! -d $AnyKernel ]; then
-        git clone https://github.com/TeraaBytee/AnyKernel3 -b master $AnyKernel
+        git clone https://github.com/TeraaBytee/AnyKernel3 -b begonia-ross $AnyKernel
         cd $AnyKernel
     else
         cd $AnyKernel
-        git fetch origin master
-        git checkout master
-        git reset --hard origin/master
+        git fetch origin begonia-ross
+        git checkout begonia-ross
+        git reset --hard origin/begonia-ross
     fi
     cp -af $MainPath/out/arch/arm64/boot/Image.gz-dtb $AnyKernel
     sed -i "s/kernel.string=.*/kernel.string=$KERNEL_NAME-$HeadCommit test by $KBUILD_BUILD_USER/g" anykernel.sh
-    zip -r9 $MainPath/"[$Compiler][R]-$KERNEL_VERSION-$KERNEL_NAME-$TIME.zip" * -x .git README.md *placeholder
+    zip -r9 $MainPath/"[$TIME][$Compiler][R-OSS]-$KERNEL_VERSION-$KERNEL_NAME.zip" * -x .git README.md *placeholder
     cd $MainPath
 }
 
 # Clone Compiler
-msg -d text="<b>Clone Compiler . . .</b>"
+if [ $UT = 1 ]; then
+    msg -d text="<b>Clone Compiler . . .</b>"
+fi
 if [ ! -d $Clang ]; then
     git clone --depth=1 https://github.com/TeraaBytee/google-clang -b 11.0.2 $Clang
 else
@@ -85,14 +87,16 @@ Defconfig="begonia_user_defconfig"
 Branch=$(git branch | grep '*' | awk '{ print $2 }')
 Changelogs=$(git log --oneline -5 --no-decorate)
 HeadCommit=$(git log --pretty=format:'%h' -1)
-KERNEL_NAME=$(cat "$MainPath/arch/arm64/configs/$Defconfig" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )
+KERNEL_NAME=$(cat "$MainPath/arch/arm64/configs/$Defconfig" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g')
 KERNEL_VERSION="4.14.$(cat "$MainPath/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
 
 # Cleaning
 Compiler=CLANG
 rm -rf out
 
-msg -d text="<b>Device</b>: <code>Redmi Note 8 Pro [BEGONIA]</code>%0A<b>Branch</b>: <code>$Branch</code>%0A<b>User</b>: <code>$KBUILD_BUILD_USER</code>%0A<b>Host</b>: <code>$KBUILD_BUILD_HOST</code>%0A<b>Kernel name</b>: <code>$KERNEL_NAME</code>%0A<b>Kernel version</b>: <code>$KERNEL_VERSION</code>%0A<b>Compiler</b>:%0A<code>$ClangVersion</code>%0A<b>Changelogs</b>:%0A<code>$Changelogs</code>"
+if [ $UT = 1 ]; then
+    msg -d text="<b>Device</b>: <code>Redmi Note 8 Pro [BEGONIA]</code>%0A<b>Branch</b>: <code>$Branch</code>%0A<b>User</b>: <code>$KBUILD_BUILD_USER</code>%0A<b>Host</b>: <code>$KBUILD_BUILD_HOST</code>%0A<b>Kernel name</b>: <code>$KERNEL_NAME</code>%0A<b>Kernel version</b>: <code>$KERNEL_VERSION</code>%0A<b>Compiler</b>:%0A<code>$ClangVersion</code>%0A<b>Changelogs</b>:%0A<code>$Changelogs</code>"
+fi
 
 TIME=$(date +"%d%m%H%M")
 BUILD_START=$(date +"%s")
@@ -122,7 +126,7 @@ BUILD_TIME="$((BUILD_DIFF / 60)) minute(s) and $((BUILD_DIFF % 60)) second(s)"
 if [ -e $MainPath/out/arch/arm64/boot/Image.gz-dtb ]; then
     MakeZip
     if [ $UT = 1 ]; then
-        FILE=$(echo *$Compiler*$TIME.zip)
+        FILE=$(echo *$TIME*$Compiler*.zip)
         upload -F caption="Build success in: $BUILD_TIME"
     else
         echo "Build success in: $BUILD_TIME"
